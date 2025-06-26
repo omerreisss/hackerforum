@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hacker Forumu</title>
+  <style>
+    body {
+      background-color: black;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 20px;
+    }
+    input, button {
+      background: #111;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 5px;
+    }
+    #chat {
+      margin-top: 20px;
+      border-top: 1px solid #0f0;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>💻 Hacker Forumu</h1>
+
+  <div id="auth">
+    <h2>Kayıt Ol / Giriş Yap</h2>
+    <input type="email" id="email" placeholder="E-posta veya kullanıcı adı" /><br><br>
+    <input type="password" id="password" placeholder="Şifre" /><br><br>
+    <button onclick="register()">Kayıt Ol</button>
+    <button onclick="login()">Giriş Yap</button>
+    <p id="status"></p>
+  </div>
+
+  <div id="chatroom" style="display:none;">
+    <h2>Hacker Forumuna Hoş Geldin</h2>
+    <ul id="messages"></ul>
+    <input id="m" autocomplete="off" placeholder="Mesajını yaz..." />
+    <button onclick="sendMessage()">Gönder</button>
+  </div>
+
+  <!-- 🔧 Sadece kendi sunucuna bağlanıyor -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentUser = '';
+
+    function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      fetch('/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      .then(res => res.text())
+      .then(msg => {
+        document.getElementById('status').innerText = msg;
+      }).catch(err => alert('Kayıt başarısız.'));
+    }
+
+    function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Giriş başarısız');
+        return res.text();
+      })
+      .then(msg => {
+        document.getElementById('status').innerText = msg;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('chatroom').style.display = 'block';
+        currentUser = email;
+      })
+      .catch(err => {
+        document.getElementById('status').innerText = 'Geçersiz bilgiler';
+      });
+    }
+
+    socket.on('chat message', function(msg) {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      document.getElementById('messages').appendChild(li);
+    });
+
+    function sendMessage() {
+      const input = document.getElementById('m');
+      const message = input.value;
+      if (message.trim() !== '') {
+        socket.emit('chat message', { user: currentUser, message });
+        input.value = '';
+      }
+    }
+  </script>
+</body>
+</html>
